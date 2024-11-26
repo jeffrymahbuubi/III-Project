@@ -18,7 +18,7 @@ data/
 ```
 
 - The `model` :file_folder: folder structure should be as follows:
-  - Download the `model` from this [link](https://drive.google.com/drive/u/1/folders/1hLCCeCH3r48IxkaK8nWWjyB-1M6I8S4T
+  - Download the `model` from this [link](https://drive.google.com/drive/u/1/folders/1hLCCeCH3r48IxkaK8nWWjyB-1M6I8S4T)
 
 ```python
 model/
