@@ -18,8 +18,8 @@ model_mapping = {
     5: lambda: PretrainedMobileNetV2WithL2Pruning(num_classes=8, pruning_amount=0.2),
 }
 
-model_name = ["PretrainAlexNet2D", "PretrainAlexNet2DPrunedL1", "PretrainAlexNet2DPrunedL2",
-              "PretrainMobileNetV2", "PretrainMobileNetV2WithL1Pruning", "PretrainMobileNetV2WithL2Pruning"]
+model_name = ["PretrainAlexNet", "PretrainAlexNetPruneL1", "PretrainAlexNetPruneL2",
+              "PretrainMobileNetV2", "PretrainMobileNetV2PruneL1", "PretrainMobileNetV2PruneL2"]
 
 def predict(model: torch.nn.Module, dataloader: DataLoader, device: torch.device, num_classes: int = 8):
     model.eval()
@@ -54,18 +54,36 @@ def predict(model: torch.nn.Module, dataloader: DataLoader, device: torch.device
 
     # Calculate overall metrics
     accuracy = np.trace(conf_matrix) / np.sum(conf_matrix)
-    report = classification_report(all_labels, all_predictions, labels=list(range(num_classes)), output_dict=True,
-                                   zero_division=0)
 
-    # Extract class-wise metrics
-    precision = {f"class_{i}": report[str(i)]['precision'] for i in range(num_classes)}
-    recall = {f"class_{i}": report[str(i)]['recall'] for i in range(num_classes)}
-    f1_score = {f"class_{i}": report[str(i)]['f1-score'] for i in range(num_classes)}
+    # Calculate class-wise metrics manually
+    precision = {}
+    recall = {}
+    f1_score = {}
+    total_precision = 0
+    total_recall = 0
+    total_f1 = 0
+
+    for i in range(num_classes):
+        tp = conf_matrix[i, i]
+        fp = conf_matrix[:, i].sum() - tp
+        fn = conf_matrix[i, :].sum() - tp
+
+        precision_cls = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall_cls = tp / (tp + fn) if (tp + fn) > 0 else 0
+        f1_cls = (2 * precision_cls * recall_cls) / (precision_cls + recall_cls) if (precision_cls + recall_cls) > 0 else 0
+
+        precision[f"class_{i}"] = precision_cls
+        recall[f"class_{i}"] = recall_cls
+        f1_score[f"class_{i}"] = f1_cls
+
+        total_precision += precision_cls
+        total_recall += recall_cls
+        total_f1 += f1_cls
 
     # Compute mean metrics across classes
-    mean_precision = np.mean(list(precision.values()))
-    mean_recall = np.mean(list(recall.values()))
-    mean_f1 = np.mean(list(f1_score.values()))
+    mean_precision = total_precision / num_classes
+    mean_recall = total_recall / num_classes
+    mean_f1 = total_f1 / num_classes
 
     # Calculate inference speed
     num_batches = len(dataloader)
@@ -89,6 +107,7 @@ def predict(model: torch.nn.Module, dataloader: DataLoader, device: torch.device
         "avg_inference_time_per_sample": avg_inference_time_per_sample
     }
 
+
 def main(args):
     # Ensure indices are valid
     if args.model_index not in model_mapping:
@@ -103,6 +122,7 @@ def main(args):
 
     # Define device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
     model = model.to(device)
 
     # Load data using k-fold cross-validation

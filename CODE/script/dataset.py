@@ -2,7 +2,7 @@ from pathlib import Path
 import glob
 from PIL import Image
 
-from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.model_selection import train_test_split, KFold
 
 from torch.utils.data import DataLoader, Subset, Dataset
 from torchvision import transforms
@@ -97,7 +97,7 @@ def get_data_kfold(data_dir, batch_size=8, num_workers=0, num_folds=5, fold_inde
     labels = dataset.labels
 
     # Set up StratifiedKFold
-    skf = StratifiedKFold(n_splits=num_folds, shuffle=True, random_state=random_state)
+    skf = KFold(n_splits=num_folds, shuffle=True, random_state=random_state)
 
     # Get the train/val indices for the chosen fold
     all_splits = list(skf.split(range(len(dataset)), labels))
